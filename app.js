@@ -13025,9 +13025,51 @@ function buildToast(){
   return '<div class="toast'+(S.toast.kind==="ok"?" toast-ok":"")+'">'+esc(S.toast.msg)+'</div>';
 }
 
+/* ── catálogo (livro de adega) ──────────────────────────────────── */
+function buildCatalogo(){
+  var wines=D.wines.filter(function(w){return w.qtd>0;});
+  var totalG=wines.reduce(function(s,w){return s+w.qtd;},0);
+  var h='<div class="screen"><div style="padding:20px 16px 8px">';
+  h+='<div style="font-family:Georgia,serif;font-size:30px;color:#EDE8DC;line-height:1">Catálogo</div>';
+  h+='<div style="font-size:13px;color:#9A8870;margin-top:4px">'+wines.length+' rótulo'+(wines.length!==1?"s":"")+' · '+totalG+' garrafa'+(totalG!==1?"s":"")+'</div>';
+  h+='</div><div style="padding:4px 16px 24px">';
+  if(wines.length===0){
+    h+='<div class="empty"><div class="empty-icon">📚</div><div class="empty-ttl">Nada para catalogar ainda</div><div class="empty-sub">Adicione vinhos à adega para ver o catálogo.</div></div>';
+  } else {
+    var groups={};
+    wines.forEach(function(w){
+      var k=w.regiao?w.regiao.split(",")[0].trim():"Sem região";
+      if(!groups[k])groups[k]=[];
+      groups[k].push(w);
+    });
+    Object.keys(groups).sort(function(a,b){return a.localeCompare(b);}).forEach(function(k){
+      var list=groups[k].slice().sort(function(a,b){
+        return (parseInt(b.safra||"0")||0)-(parseInt(a.safra||"0")||0);
+      });
+      h+='<div style="font-size:11px;letter-spacing:.2em;color:#D4A547;text-transform:uppercase;margin:18px 0 8px">'+esc(k)+'</div>';
+      list.forEach(function(w){
+        var mat=getMat(w),chart=chartInfo(w);
+        h+='<div data-wid="'+esc(w.id)+'" onclick="app.openWine(this.dataset.wid)" style="padding:10px 0;border-top:.5px solid rgba(212,165,71,.2);cursor:pointer">';
+        h+='<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">';
+        h+='<span style="font-family:Georgia,serif;font-size:16px;color:#EDE8DC">'+esc(w.produtor||"Sem nome")+(w.nome?' — '+esc(w.nome):"")+(w.safra?' <span style="color:#C8821E">'+esc(w.safra)+'</span>':"")+'</span>';
+        h+='<span style="font-size:13px;color:#9A8870;white-space:nowrap">'+(chart?"WE "+chart.rating:"")+'</span>';
+        h+='</div>';
+        h+='<div style="display:flex;align-items:center;gap:6px;margin-top:4px;font-size:13px;color:#9A8870;flex-wrap:wrap">';
+        if(mat)h+='<span style="width:6px;height:6px;border-radius:50%;background:'+mat.clr+';display:inline-block"></span><span>'+esc(mat.label)+'</span>';
+        if(w.uvas)h+=(mat?'<span style="color:#635646">·</span>':"")+'<span style="font-style:italic">'+esc(w.uvas)+'</span>';
+        if(w.nicho)h+='<span style="color:#635646">·</span><span style="font-family:monospace;color:#D4A547">'+esc(w.nicho)+'</span>';
+        if(w.custo)h+='<span style="color:#635646">·</span><span style="color:#D4A547;font-weight:600">'+w.moeda+' '+esc(w.custo)+'</span>';
+        h+='</div></div>';
+      });
+    });
+  }
+  h+='</div></div>';
+  return h;
+}
+
 /* ── nav ─────────────────────────────────────────────────────── */
 function buildNav(){
-  var tabs=[["adega","🏛","Adega"],["diario","📖","Diário"],["screener","🔍","Screener"],["chart","📊","Chart"]];
+  var tabs=[["adega","🏛","Adega"],["diario","📖","Diário"],["catalogo","📚","Catálogo"],["screener","🔍","Screener"],["chart","📊","Chart"]];
   var h='<nav class="nav">';
   tabs.forEach(function(t){
     h+='<button class="nav-item'+(S.screen===t[0]?" active":"")+'" data-sc="'+t[0]+'" onclick="app.navigate(this.dataset.sc)">';
@@ -13043,6 +13085,7 @@ function render(){
   if(S.wineId)screen=buildFicha();
   else if(S.screen==="adega")screen=buildAdega();
   else if(S.screen==="diario")screen=buildDiario();
+  else if(S.screen==="catalogo")screen=buildCatalogo();
   else if(S.screen==="screener")screen=buildScreener();
   else screen=buildChart();
   var nav=S.wineId?"":buildNav();
