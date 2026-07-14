@@ -13085,10 +13085,11 @@ function buildPrintCatalogo(){
     tree[pais][tipo][regiao][produtor].push(w);
   });
   var hoje=new Date().toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"});
-  var h='<div class="pc-cover"><div class="pc-cover-eyebrow">Cave Particular</div><div class="pc-cover-ttl">Catálogo da Adega</div>';
+  var h='<div class="pc-cover"><img class="pc-cover-photo" src="adega_header.jpg" alt="">';
+  h+='<div class="pc-cover-eyebrow">Cave Particular</div><div class="pc-cover-ttl">Catálogo da Adega</div>';
   h+='<div class="pc-cover-sub">'+wines.length+' rótulo'+(wines.length!==1?"s":"")+' · '+totalG+' garrafa'+(totalG!==1?"s":"")+' · atualizado em '+hoje+'</div></div>';
   Object.keys(tree).sort(function(a,b){return a.localeCompare(b);}).forEach(function(pais){
-    h+='<div class="pc-pais">'+esc(pais)+'</div>';
+    h+='<div class="pc-pais"><span class="pc-pais-seal">'+esc(pais.charAt(0).toUpperCase())+'</span><span class="pc-pais-nome">'+esc(pais)+'</span></div>';
     Object.keys(tree[pais]).sort(function(a,b){return a.localeCompare(b);}).forEach(function(tipo){
       h+='<div class="pc-tipo">'+esc(tipo)+'</div>';
       Object.keys(tree[pais][tipo]).sort(function(a,b){return a.localeCompare(b);}).forEach(function(regiao){
