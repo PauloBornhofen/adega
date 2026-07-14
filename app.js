@@ -12378,7 +12378,7 @@ var S={
   harmPrato:"",harmOcasiao:"",harmResult:[],harmLoading:false,harmError:""
 };
 
-function newWine(){return{id:uid(),produtor:"",safra:"",regiao:"",aoc:"",pais:"França",tipo:"Tinto",uvas:"",qtd:1,nicho:"",procedencia:"mala",custo:"",moeda:"EUR",fornecedor:"",dataCompra:"",ponteiros:[],provas:[],foto:null,notas:""};}
+function newWine(){return{id:uid(),produtor:"",nome:"",safra:"",regiao:"",aoc:"",pais:"França",tipo:"Tinto",uvas:"",qtd:1,nicho:"",procedencia:"mala",custo:"",moeda:"EUR",fornecedor:"",dataCompra:"",ponteiros:[],provas:[],foto:null,notas:""};}
 function newProva(){return{id:uid(),data:new Date().toISOString().slice(0,10),impressao:"",maturidade:"no_ponto",contexto:""};}
 function newPointer(){return{fonte:"Wine Enthusiast",nota:"",link:"",sintese:""};}
 
@@ -12390,6 +12390,7 @@ function sanitizeWine(raw){
   return{
     id:String(raw.id||uid()),
     produtor:produtor,
+    nome:String(raw.nome||""),
     safra:String(raw.safra||"").replace(/[^0-9]/g,"").slice(0,4),
     regiao:String(raw.regiao||""),
     aoc:String(raw.aoc||""),
@@ -12449,7 +12450,7 @@ function filterWines(){
   var key=DV+"|"+S.q+"|"+S.fTipo+"|"+S.fMat;
   if(_filterCache.key===key)return _filterCache.result;
   var result=D.wines.filter(function(w){
-    var txt=(w.produtor+" "+w.regiao+" "+w.aoc+" "+w.safra+" "+w.nicho+" "+w.uvas).toLowerCase();
+    var txt=(w.produtor+" "+w.nome+" "+w.regiao+" "+w.aoc+" "+w.safra+" "+w.nicho+" "+w.uvas).toLowerCase();
     if(S.q&&!txt.includes(S.q.toLowerCase()))return false;
     if(S.fTipo!=="Todos"&&w.tipo!==S.fTipo)return false;
     if(S.fMat!=="Todos"){
@@ -12494,14 +12495,15 @@ function wineCard(w){
   h+='<div class="wcard-body" data-wid="'+esc(w.id)+'" onclick="app.openWine(this.dataset.wid)">';
   h+='<div class="wcard-top">'+tipoPill(w.tipo);
   if(w.nicho)h+='<span class="nicho-tag">'+esc(w.nicho)+'</span>';
-  h+='<span class="proc-tag">'+(proc?proc.l:"")+(w.custo?" · "+w.moeda+" "+w.custo:"")+'</span>';
+  h+='<span class="proc-tag">'+(proc?proc.l:"")+'</span>';
   h+='</div>';
-  h+='<div class="wname">'+(esc(w.produtor)||"Sem nome")+(w.safra?' <span class="wsafra">'+esc(w.safra)+'</span>':"")+'</div>';
+  h+='<div class="wname">'+(esc(w.produtor)||"Sem nome")+(w.nome?' — '+esc(w.nome):"")+(w.safra?' <span class="wsafra">'+esc(w.safra)+'</span>':"")+'</div>';
   if(w.regiao)h+='<div class="wsub">'+esc(w.regiao)+'</div>';
   if(w.uvas)h+='<div class="wuvas">'+esc(w.uvas)+'</div>';
   h+='<div class="wmat">';
-  if(mat)h+='<span class="dot" style="background:'+mat.clr+'"></span><span style="font-size:10px;color:'+mat.clr+'">'+esc(mat.label)+'</span>';
-  if(chart)h+='<span class="rat">WE '+chart.rating+' · '+esc(chart.linha.split("/")[0])+'</span>';
+  if(mat)h+='<span class="dot" style="background:'+mat.clr+'"></span><span style="font-size:12px;color:'+mat.clr+'">'+esc(mat.label)+'</span>';
+  if(w.custo)h+='<span class="rat" style="background:rgba(200,130,30,.18);border-color:rgba(200,130,30,.4);color:#D4A547;font-weight:600">'+w.moeda+' '+esc(w.custo)+'</span>';
+  if(chart)h+='<span class="rat"'+(w.custo?' style="margin-left:6px"':'')+'>WE '+chart.rating+' · '+esc(chart.linha.split("/")[0])+'</span>';
   h+='</div></div>';
   h+='<div class="wcard-foot">';
   h+='<span class="wcard-qty" style="color:'+(esg?"#E09080":"#EDE8DC")+'">'+(esg?"Esgotado":w.qtd+" "+(w.qtd===1?"garrafa":"garrafas"))+'</span>';
@@ -12572,11 +12574,11 @@ function buildTable(wines){
       var c=TC[w.tipo]||TC.Tinto;
       var dot='<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+c.fg+';margin-right:5px;vertical-align:middle"></span>';
       return '<tr data-wid="'+esc(w.id)+'" onclick="app.openWine(this.dataset.wid)">'
-        +'<td class="td-p">'+dot+esc(w.produtor||"—")+'</td>'
+        +'<td class="td-p">'+dot+esc(w.produtor||"—")+(w.nome?' — '+esc(w.nome):"")+'</td>'
         +'<td style="color:#C8821E;font-family:monospace">'+(w.safra||"—")+'</td>'
         +'<td class="td-r">'+(w.regiao?esc(w.regiao.split(",")[0].trim()):"")+'</td>'
         +'<td class="td-c" style="color:'+(w.qtd<1?"#E09080":"#EDE8DC")+'">'+w.qtd+'</td>'
-        +'<td style="color:'+(mat?mat.clr:"#635646")+';font-size:11px">'+(mat?mat.label:"—")+'</td>'
+        +'<td style="color:'+(mat?mat.clr:"#635646")+';font-size:13px">'+(mat?mat.label:"—")+'</td>'
         +'<td class="td-c" style="color:'+(chart&&chart.rating>=97?"#8ABA8A":chart&&chart.rating>=94?"#C8821E":"#9A8870")+'">'+(chart?chart.rating:"—")+'</td>'
         +'</tr>';
     }).join("");
@@ -12595,9 +12597,9 @@ function buildTable(wines){
       var qty=gw.reduce(function(s,w){return s+(Number(w.qtd)||0);},0);
       var col=!!S.collapsed[k];
       h+='<tr data-gk="'+esc(k)+'" onclick="app.toggleGroup(this.dataset.gk)" style="cursor:pointer;background:rgba(200,130,30,.08)">'
-        +'<td colspan="6" style="padding:7px 8px;color:#D4A547;font-size:12px;font-weight:500;border-bottom:.5px solid rgba(212,165,71,.25)">'
+        +'<td colspan="6" style="padding:7px 8px;color:#D4A547;font-size:14px;font-weight:500;border-bottom:.5px solid rgba(212,165,71,.25)">'
         +(col?"▶ ":"▼ ")+esc(k)
-        +'<span style="font-size:10px;color:#9A8870;font-weight:400;margin-left:8px">'+gw.length+" rótulo"+(gw.length!==1?"s":"")+" · "+qty+" garrafa"+(qty!==1?"s":"")+'</span>'
+        +'<span style="font-size:12px;color:#9A8870;font-weight:400;margin-left:8px">'+gw.length+" rótulo"+(gw.length!==1?"s":"")+" · "+qty+" garrafa"+(qty!==1?"s":"")+'</span>'
         +'</td></tr>';
       if(!col)h+=rows(gw);
     });
@@ -12631,9 +12633,9 @@ function buildAdega(){
   h+='<div class="stat"><div class="stat-n">'+D.wines.filter(function(w){return w.qtd>0;}).length+'</div><div class="stat-l">RÓTULOS</div></div>';
   h+='<div class="stat"><div class="stat-n">'+D.wines.filter(function(w){return w.provas&&w.provas.length>0;}).length+'</div><div class="stat-l">COM PROVA</div></div>';
   h+='</div>';
-  h+='<button class="harm-btn" onclick="app.openModal(\'harmonizar\')"><span style="font-size:18px">🍽️</span><span><strong style="color:#8ABA8A">Sugerir por prato</strong> — diga o que vai servir</span></button>';
-  h+='<div class="search-wrap"><div class="search-box"><span style="font-size:15px">🔍</span>';
-  h+='<input id="sq" value="'+esc(S.q)+'" placeholder="Buscar produtor, região, nicho…" oninput="app.setQ(this.value)">';
+  h+='<button class="harm-btn" onclick="app.openModal(\'harmonizar\')"><span style="font-size:20px">🍽️</span><span><strong style="color:#8ABA8A">Sugerir por prato</strong> — diga o que vai servir</span></button>';
+  h+='<div class="search-wrap"><div class="search-box"><span style="font-size:17px">🔍</span>';
+  h+='<input id="sq" value="'+esc(S.q)+'" placeholder="Buscar produtor, vinho, região, nicho…" oninput="app.setQ(this.value)">';
   h+='<button id="search-clear" class="search-clear" style="display:'+(S.q?"inline-block":"none")+'" onclick="app.setQ(\'\')">×</button>';
   h+='</div></div>';
   h+='<div class="view-toggle"><button class="vt-btn'+(S.viewMode==="cards"?" active":"") +'" onclick="app.setView(\'cards\')">▦ Cartões</button>';
@@ -12666,21 +12668,23 @@ function buildFicha(){
   var proc=PROCS.find(function(p){return p.id===w.procedencia;});
   var provas=(w.provas||[]).slice().sort(function(a,b){return b.data.localeCompare(a.data);});
   var h='<div class="screen" style="padding-bottom:24px">';
-  h+='<div class="ficha-hdr"><button style="background:none;border:none;color:#9A8870;font-size:22px" onclick="app.back()">←</button><span style="font-size:12px;color:#9A8870">Adega</span></div>';
+  h+='<div class="ficha-hdr"><button style="background:none;border:none;color:#9A8870;font-size:24px" onclick="app.back()">←</button><span style="font-size:14px;color:#9A8870">Adega</span></div>';
   h+='<div style="padding:16px">';
   h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">';
   h+='<div>'+tipoPill(w.tipo);
-  h+='<div style="font-family:Georgia,serif;font-size:22px;color:#EDE8DC;margin-top:6px">'+esc(w.produtor||"Sem nome")+'</div>';
-  h+='<div style="font-family:Georgia,serif;font-size:28px;color:#C8821E;line-height:1">'+esc(w.safra||"")+'</div>';
-  if(w.regiao)h+='<div style="font-size:13px;color:#9A8870;margin-top:3px">'+esc(w.regiao)+'</div>';
-  if(w.uvas)h+='<div style="font-size:11px;color:#635646;margin-top:2px;font-style:italic">'+esc(w.uvas)+'</div>';
+  h+='<div style="font-family:Georgia,serif;font-size:24px;color:#EDE8DC;margin-top:6px">'+esc(w.produtor||"Sem nome")+'</div>';
+  if(w.nome)h+='<div style="font-family:Georgia,serif;font-size:16px;color:#D4A547;margin-top:1px">'+esc(w.nome)+'</div>';
+  h+='<div style="font-family:Georgia,serif;font-size:30px;color:#C8821E;line-height:1">'+esc(w.safra||"")+'</div>';
+  if(w.regiao)h+='<div style="font-size:15px;color:#9A8870;margin-top:3px">'+esc(w.regiao)+'</div>';
+  if(w.uvas)h+='<div style="font-size:13px;color:#635646;margin-top:2px;font-style:italic">'+esc(w.uvas)+'</div>';
   h+='</div>';
-  if(w.nicho)h+='<span class="nicho-tag" style="font-size:11px;padding:4px 8px">'+esc(w.nicho)+'</span>';
+  if(w.nicho)h+='<span class="nicho-tag" style="font-size:13px;padding:4px 8px">'+esc(w.nicho)+'</span>';
   h+='</div>';
   h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">';
-  if(proc)h+='<span style="font-size:11px;background:rgba(200,130,30,.1);border:.5px solid rgba(212,165,71,.18);color:#C8821E;padding:3px 10px;border-radius:20px">'+proc.l+(w.custo?" · "+w.moeda+" "+w.custo:"")+(w.fornecedor?" · "+w.fornecedor:"")+'</span>';
-  if(mat)h+='<span style="font-size:11px;color:'+mat.clr+';display:flex;align-items:center;gap:4px"><span class="dot" style="background:'+mat.clr+'"></span>'+esc(mat.label)+'</span>';
-  if(chart)h+='<span style="font-size:11px;background:rgba(200,130,30,.1);border:.5px solid rgba(200,130,30,.2);color:#D4A547;padding:3px 10px;border-radius:20px">WE '+chart.rating+' · '+esc(chart.linha)+' · <span style="color:'+MAT_CLR[chart.maturidade]+'">'+MAT_PT[chart.maturidade]+'</span></span>';
+  if(proc)h+='<span style="font-size:13px;background:rgba(200,130,30,.1);border:.5px solid rgba(212,165,71,.18);color:#C8821E;padding:3px 10px;border-radius:20px">'+proc.l+(w.fornecedor?" · "+w.fornecedor:"")+'</span>';
+  if(w.custo)h+='<span style="font-size:13px;font-weight:600;background:rgba(200,130,30,.18);border:.5px solid rgba(200,130,30,.4);color:#D4A547;padding:3px 10px;border-radius:20px">'+w.moeda+' '+esc(w.custo)+' / garrafa</span>';
+  if(mat)h+='<span style="font-size:13px;color:'+mat.clr+';display:flex;align-items:center;gap:4px"><span class="dot" style="background:'+mat.clr+'"></span>'+esc(mat.label)+'</span>';
+  if(chart)h+='<span style="font-size:13px;background:rgba(200,130,30,.1);border:.5px solid rgba(200,130,30,.2);color:#D4A547;padding:3px 10px;border-radius:20px">WE '+chart.rating+' · '+esc(chart.linha)+' · <span style="color:'+MAT_CLR[chart.maturidade]+'">'+MAT_PT[chart.maturidade]+'</span></span>';
   h+='</div>';
   h+='<div style="display:flex;gap:8px;margin-bottom:18px">';
   h+='<button class="btn btn-p btn-w" data-wid="'+esc(w.id)+'" onclick="app.openModal(\'taste\',this.dataset.wid)">+ Registrar prova</button>';
@@ -12690,30 +12694,30 @@ function buildFicha(){
   h+='<div style="height:.5px;background:rgba(212,165,71,.18);margin-bottom:16px"></div>';
   h+='<div class="sec-lbl">DIÁRIO DE DEGUSTAÇÃO</div>';
   if(provas.length===0){
-    h+='<div style="border:.5px dashed rgba(212,165,71,.18);border-radius:10px;padding:20px;text-align:center;color:#635646;font-size:12px">Nenhuma prova registrada ainda.</div>';
+    h+='<div style="border:.5px dashed rgba(212,165,71,.18);border-radius:10px;padding:20px;text-align:center;color:#635646;font-size:14px">Nenhuma prova registrada ainda.</div>';
   } else {
     provas.forEach(function(pr,i){
       var clr=pr.maturidade==="no_ponto"?"#6B9A6B":pr.maturidade==="fechado"?"#7B6BAA":"#C0573F";
       var lbl=pr.maturidade==="no_ponto"?"No ponto":pr.maturidade==="fechado"?"Fechado":"Passando";
       h+='<div class="prova-card'+(i===0?" prova-latest":"")+'">';
       h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">';
-      h+='<span style="font-size:11px;color:#C8821E">'+esc(pr.data)+'</span>';
-      h+='<span style="font-size:10px;background:'+clr+'22;color:'+clr+';border:.5px solid '+clr+'44;padding:2px 8px;border-radius:10px">'+lbl+'</span>';
+      h+='<span style="font-size:13px;color:#C8821E">'+esc(pr.data)+'</span>';
+      h+='<span style="font-size:12px;background:'+clr+'22;color:'+clr+';border:.5px solid '+clr+'44;padding:2px 8px;border-radius:10px">'+lbl+'</span>';
       h+='</div>';
-      h+='<div style="font-size:13px;color:#EDE8DC;line-height:1.6">'+esc(pr.impressao)+'</div>';
-      if(pr.contexto)h+='<div style="font-size:11px;color:#9A8870;border-top:.5px solid rgba(212,165,71,.18);padding-top:6px;margin-top:6px">'+esc(pr.contexto)+'</div>';
+      h+='<div style="font-size:15px;color:#EDE8DC;line-height:1.6">'+esc(pr.impressao)+'</div>';
+      if(pr.contexto)h+='<div style="font-size:13px;color:#9A8870;border-top:.5px solid rgba(212,165,71,.18);padding-top:6px;margin-top:6px">'+esc(pr.contexto)+'</div>';
       h+='</div>';
     });
   }
-  if(w.notas){h+='<div style="margin-top:16px"><div class="sec-lbl">NOTAS</div><div style="font-size:12px;color:#9A8870;line-height:1.6">'+esc(w.notas)+'</div></div>';}
+  if(w.notas){h+='<div style="margin-top:16px"><div class="sec-lbl">NOTAS</div><div style="font-size:14px;color:#9A8870;line-height:1.6">'+esc(w.notas)+'</div></div>';}
   var pts=w.ponteiros||[];
   if(pts.length>0){
     h+='<div style="margin-top:16px"><div class="sec-lbl">REFERÊNCIAS</div>';
     pts.forEach(function(pt){
       h+='<div style="background:#2D2620;border:.5px solid rgba(212,165,71,.18);border-radius:8px;padding:8px 12px;margin-bottom:6px">';
-      h+='<div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:#D4A547;font-weight:500">'+esc(pt.fonte)+'</span>'+(pt.nota?'<span style="font-size:11px;color:#C8821E">'+esc(pt.nota)+'</span>':"")+'</div>';
-      if(pt.sintese)h+='<div style="font-size:11px;color:#9A8870;margin-top:3px">'+esc(pt.sintese)+'</div>';
-      if(pt.link)h+='<a href="'+esc(pt.link)+'" target="_blank" style="font-size:10px;color:#C8821E;display:block;margin-top:3px">↗ Abrir</a>';
+      h+='<div style="display:flex;justify-content:space-between"><span style="font-size:13px;color:#D4A547;font-weight:500">'+esc(pt.fonte)+'</span>'+(pt.nota?'<span style="font-size:13px;color:#C8821E">'+esc(pt.nota)+'</span>':"")+'</div>';
+      if(pt.sintese)h+='<div style="font-size:13px;color:#9A8870;margin-top:3px">'+esc(pt.sintese)+'</div>';
+      if(pt.link)h+='<a href="'+esc(pt.link)+'" target="_blank" style="font-size:12px;color:#C8821E;display:block;margin-top:3px">↗ Abrir</a>';
       h+='</div>';
     });
     h+='</div>';
@@ -12727,24 +12731,24 @@ function buildDiario(){
   var all=D.wines.flatMap(function(w){return (w.provas||[]).map(function(p){return Object.assign({},p,{wine:w});});});
   all.sort(function(a,b){return b.data.localeCompare(a.data);});
   var h='<div class="screen"><div style="padding:16px 16px 8px">';
-  h+='<div style="font-family:Georgia,serif;font-size:24px;color:#EDE8DC;margin-bottom:4px">Diário de Degustação</div>';
-  h+='<div style="font-size:12px;color:#9A8870">'+all.length+" prova"+(all.length!==1?"s":"")+" registrada"+(all.length!==1?"s":"")+'</div></div>';
+  h+='<div style="font-family:Georgia,serif;font-size:26px;color:#EDE8DC;margin-bottom:4px">Diário de Degustação</div>';
+  h+='<div style="font-size:14px;color:#9A8870">'+all.length+" prova"+(all.length!==1?"s":"")+" registrada"+(all.length!==1?"s":"")+'</div></div>';
   h+='<div style="padding:0 12px">';
   if(all.length===0){
-    h+='<div style="border:.5px dashed rgba(212,165,71,.18);border-radius:12px;padding:40px 20px;text-align:center;color:#9A8870;font-size:12px">Nenhuma prova registrada ainda.</div>';
+    h+='<div style="border:.5px dashed rgba(212,165,71,.18);border-radius:12px;padding:40px 20px;text-align:center;color:#9A8870;font-size:14px">Nenhuma prova registrada ainda.</div>';
   } else {
     all.forEach(function(p){
       var clr=p.maturidade==="no_ponto"?"#6B9A6B":p.maturidade==="fechado"?"#7B6BAA":"#C0573F";
       var lbl=p.maturidade==="no_ponto"?"No ponto":p.maturidade==="fechado"?"Fechado":"Passando";
       h+='<div style="background:#252019;border:.5px solid rgba(212,165,71,.18);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer" data-wid="'+esc(p.wine.id)+'" onclick="app.openWine(this.dataset.wid)">';
       h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
-      h+='<span style="font-family:Georgia,serif;font-size:14px;color:#EDE8DC">'+esc(p.wine.produtor)+' <span style="color:#C8821E">'+esc(p.wine.safra)+'</span></span>';
-      h+='<span style="font-size:10px;color:#C8821E">'+esc(p.data)+'</span></div>';
-      h+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px"><span class="dot" style="background:'+clr+'"></span><span style="font-size:10px;color:'+clr+'">'+lbl+'</span>';
-      if(p.wine.regiao)h+='<span style="font-size:10px;color:#635646;margin-left:4px">'+esc(p.wine.regiao.split(",")[0])+'</span>';
+      h+='<span style="font-family:Georgia,serif;font-size:16px;color:#EDE8DC">'+esc(p.wine.produtor)+(p.wine.nome?' — '+esc(p.wine.nome):"")+' <span style="color:#C8821E">'+esc(p.wine.safra)+'</span></span>';
+      h+='<span style="font-size:12px;color:#C8821E">'+esc(p.data)+'</span></div>';
+      h+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px"><span class="dot" style="background:'+clr+'"></span><span style="font-size:12px;color:'+clr+'">'+lbl+'</span>';
+      if(p.wine.regiao)h+='<span style="font-size:12px;color:#635646;margin-left:4px">'+esc(p.wine.regiao.split(",")[0])+'</span>';
       h+='</div>';
-      h+='<div style="font-size:12px;color:#9A8870;line-height:1.5">'+esc(p.impressao)+'</div>';
-      if(p.contexto)h+='<div style="font-size:11px;color:#635646;margin-top:4px;border-top:.5px solid rgba(212,165,71,.18);padding-top:5px">'+esc(p.contexto)+'</div>';
+      h+='<div style="font-size:14px;color:#9A8870;line-height:1.5">'+esc(p.impressao)+'</div>';
+      if(p.contexto)h+='<div style="font-size:13px;color:#635646;margin-top:4px;border-top:.5px solid rgba(212,165,71,.18);padding-top:5px">'+esc(p.contexto)+'</div>';
       h+='</div>';
     });
   }
@@ -12754,21 +12758,21 @@ function buildDiario(){
 
 function buildScreener(){
   var h='<div class="screen"><div style="padding:16px 16px 8px">';
-  h+='<div style="font-family:Georgia,serif;font-size:24px;color:#EDE8DC;margin-bottom:4px">Screener de Viagem</div>';
-  h+='<div style="font-size:12px;color:#9A8870">Carregue o Excel de uma loja e veja cada vinho anotado com a WE 2026.</div></div>';
+  h+='<div style="font-family:Georgia,serif;font-size:26px;color:#EDE8DC;margin-bottom:4px">Screener de Viagem</div>';
+  h+='<div style="font-size:14px;color:#9A8870">Carregue o Excel de uma loja e veja cada vinho anotado com a WE 2026.</div></div>';
   h+='<div style="padding:0 12px">';
   if(S.scLoading){
-    h+='<div style="text-align:center;padding:40px 16px;color:#9A8870;font-size:13px">Lendo planilha…</div>';
+    h+='<div style="text-align:center;padding:40px 16px;color:#9A8870;font-size:15px">Lendo planilha…</div>';
   } else if(S.scRows.length===0){
     h+='<div style="border:1.5px dashed rgba(212,165,71,.18);border-radius:12px;padding:40px 16px;text-align:center;cursor:pointer" onclick="document.getElementById(\'xlf\').click()">';
-    h+='<div style="font-size:32px;margin-bottom:10px">📊</div>';
-    h+='<div style="font-size:14px;color:#EDE8DC;font-weight:500;margin-bottom:4px">Carregar Excel da loja</div>';
-    h+='<div style="font-size:11px;color:#9A8870;line-height:1.6">Formatos .xlsx, .xls<br>O app detecta colunas e cruza com a Vintage Chart 2026.</div></div>';
+    h+='<div style="font-size:34px;margin-bottom:10px">📊</div>';
+    h+='<div style="font-size:16px;color:#EDE8DC;font-weight:500;margin-bottom:4px">Carregar Excel da loja</div>';
+    h+='<div style="font-size:13px;color:#9A8870;line-height:1.6">Formatos .xlsx, .xls<br>O app detecta colunas e cruza com a Vintage Chart 2026.</div></div>';
     h+='<input id="xlf" type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="app.procExcel(this)">';
   } else {
     h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-    h+='<div><div style="font-size:13px;color:#EDE8DC;font-weight:500">'+esc(S.scLoja)+'</div>';
-    h+='<div style="font-size:11px;color:#9A8870">'+S.scRows.length+' vinhos · <span style="color:#6B9A6B">'+S.scRows.filter(function(r){return r.maturidade==="peak"||r.maturidade==="early";}).length+' no ponto ou podem beber</span></div></div>';
+    h+='<div><div style="font-size:15px;color:#EDE8DC;font-weight:500">'+esc(S.scLoja)+'</div>';
+    h+='<div style="font-size:13px;color:#9A8870">'+S.scRows.length+' vinhos · <span style="color:#6B9A6B">'+S.scRows.filter(function(r){return r.maturidade==="peak"||r.maturidade==="early";}).length+' no ponto ou podem beber</span></div></div>';
     h+='<button class="btn btn-sm" onclick="app.clearScreener()">Limpar</button></div>';
     S.scRows.forEach(function(r){
       var bg="rgba(100,90,80,.06)",bd="rgba(212,165,71,.18)";
@@ -12777,10 +12781,10 @@ function buildScreener(){
       else if(!r.rating||r.maturidade==="decline"||r.rating<88){bg="rgba(100,90,80,.12)";bd="rgba(100,90,80,.2)";}
       var rc=r.rating>=97?"#8ABA8A":r.rating>=94?"#C8821E":"#9A8870";
       h+='<div style="background:'+bg+';border:.5px solid '+bd+';border-radius:8px;padding:8px 10px;display:grid;grid-template-columns:1fr 32px 90px;gap:6px;align-items:center;margin-bottom:6px">';
-      h+='<div><div style="font-size:12px;color:'+(r.rating?"#EDE8DC":"#9A8870")+'">'+esc(r.produtor)+'</div>';
-      h+='<div style="font-size:10px;color:#9A8870">'+(r.safra||"")+(r.aoc?" · "+esc(r.aoc):"")+(r.preco?" · "+esc(r.preco):"")+'</div></div>';
-      h+='<span style="font-size:12px;font-weight:500;color:'+rc+';text-align:center">'+(r.rating||"—")+'</span>';
-      h+='<span style="font-size:9px;background:'+(r.maturidade?MAT_CLR[r.maturidade]+"22":"transparent")+';color:'+(r.maturidade?MAT_CLR[r.maturidade]:"#635646")+';padding:2px 6px;border-radius:4px;text-align:center">'+(r.maturidade?MAT_PT[r.maturidade]:"—")+'</span>';
+      h+='<div><div style="font-size:14px;color:'+(r.rating?"#EDE8DC":"#9A8870")+'">'+esc(r.produtor)+'</div>';
+      h+='<div style="font-size:12px;color:#9A8870">'+(r.safra||"")+(r.aoc?" · "+esc(r.aoc):"")+(r.preco?" · "+esc(r.preco):"")+'</div></div>';
+      h+='<span style="font-size:14px;font-weight:500;color:'+rc+';text-align:center">'+(r.rating||"—")+'</span>';
+      h+='<span style="font-size:11px;background:'+(r.maturidade?MAT_CLR[r.maturidade]+"22":"transparent")+';color:'+(r.maturidade?MAT_CLR[r.maturidade]:"#635646")+';padding:2px 6px;border-radius:4px;text-align:center">'+(r.maturidade?MAT_PT[r.maturidade]:"—")+'</span>';
       h+='</div>';
     });
   }
@@ -12791,25 +12795,25 @@ function buildScreener(){
 function buildChart(){
   var anos=CHART_ANOS.filter(function(y){return CHART[S.chartLinha]&&CHART[S.chartLinha][y];});
   var h='<div class="screen"><div style="padding:16px 16px 8px">';
-  h+='<div style="font-family:Georgia,serif;font-size:24px;color:#EDE8DC;margin-bottom:4px">Vintage Chart</div>';
-  h+='<div style="font-size:11px;color:#9A8870;margin-bottom:12px">Wine Enthusiast 2026 · '+Object.keys(CHART).length+' regiões</div>';
-  h+='<select style="background:#252019;color:#EDE8DC;border:.5px solid rgba(212,165,71,.18);border-radius:8px;padding:8px 10px;font-size:13px;outline:none;cursor:pointer;width:100%" onchange="app.setChartLinha(this.value)">';
+  h+='<div style="font-family:Georgia,serif;font-size:26px;color:#EDE8DC;margin-bottom:4px">Vintage Chart</div>';
+  h+='<div style="font-size:13px;color:#9A8870;margin-bottom:12px">Wine Enthusiast 2026 · '+Object.keys(CHART).length+' regiões</div>';
+  h+='<select style="background:#252019;color:#EDE8DC;border:.5px solid rgba(212,165,71,.18);border-radius:8px;padding:8px 10px;font-size:15px;outline:none;cursor:pointer;width:100%" onchange="app.setChartLinha(this.value)">';
   Object.keys(CHART).sort().forEach(function(k){h+='<option value="'+esc(k)+'"'+(S.chartLinha===k?" selected":"")+'>'+esc(k)+'</option>';});
   h+='</select></div><div style="padding:8px 12px">';
   anos.forEach(function(y){
     var cell=CHART[S.chartLinha][y],r=cell.rating,m=cell.maturidade||"nodata";
     h+='<div class="chart-row">';
-    h+='<span style="font-family:monospace;font-size:13px;color:#C8821E;min-width:36px;font-weight:500">'+y+'</span>';
+    h+='<span style="font-family:monospace;font-size:15px;color:#C8821E;min-width:36px;font-weight:500">'+y+'</span>';
     h+='<div style="flex:1;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden"><div style="width:'+Math.max(0,r-80)/20*100+'%;height:100%;background:'+(MAT_CLR[m]||"#C8821E")+';border-radius:2px"></div></div>';
-    h+='<span style="font-size:13px;color:#EDE8DC;min-width:24px;text-align:right;font-weight:500">'+r+'</span>';
-    h+='<span style="font-size:10px;min-width:90px;text-align:right;color:'+(MAT_CLR[m]||"#555")+'">'+MAT_PT[m]+'</span>';
+    h+='<span style="font-size:15px;color:#EDE8DC;min-width:24px;text-align:right;font-weight:500">'+r+'</span>';
+    h+='<span style="font-size:12px;min-width:90px;text-align:right;color:'+(MAT_CLR[m]||"#555")+'">'+MAT_PT[m]+'</span>';
     h+='</div>';
   });
   h+='<div style="margin-top:14px;padding:10px;background:#252019;border-radius:8px"><div class="sec-lbl" style="margin-bottom:7px">LEGENDA</div>';
   Object.entries(MAT_PT).filter(function(e){return e[0]!=="nodata";}).forEach(function(e){
-    h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span class="dot" style="background:'+MAT_CLR[e[0]]+'"></span><span style="font-size:10px;color:'+MAT_CLR[e[0]]+'">'+e[1]+'</span></div>';
+    h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span class="dot" style="background:'+MAT_CLR[e[0]]+'"></span><span style="font-size:12px;color:'+MAT_CLR[e[0]]+'">'+e[1]+'</span></div>';
   });
-  h+='<div style="font-size:9px;color:#635646;margin-top:8px">Edição 2026 · maturidade atualizada anualmente</div>';
+  h+='<div style="font-size:11px;color:#635646;margin-top:8px">Edição 2026 · maturidade atualizada anualmente</div>';
   h+='</div></div></div>';
   return h;
 }
@@ -12840,26 +12844,27 @@ function buildAddModal(){
   if(!editing&&S.addTab==="foto"){
     body='<div style="display:flex;flex-direction:column;gap:12px">';
     body+='<div style="display:flex;gap:8px">';
-    body+='<button class="btn btn-w" style="background:rgba(200,130,30,.1);border:1px solid rgba(200,130,30,.35);color:#EDE8DC;padding:14px 8px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px" onclick="document.getElementById(\'cf\').click()"><span style="font-size:28px">📷</span><span style="font-weight:500">Fotografar agora</span><span style="font-size:10px;color:#9A8870">Abre a câmera</span></button>';
-    body+='<button class="btn btn-w" style="background:rgba(107,154,107,.1);border:1px solid rgba(107,154,107,.35);color:#EDE8DC;padding:14px 8px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px" onclick="document.getElementById(\'gf\').click()"><span style="font-size:28px">🖼️</span><span style="font-weight:500">Da galeria</span><span style="font-size:10px;color:#9A8870">Recomendado no iPhone</span></button>';
+    body+='<button class="btn btn-w" style="background:rgba(200,130,30,.1);border:1px solid rgba(200,130,30,.35);color:#EDE8DC;padding:14px 8px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:14px" onclick="document.getElementById(\'cf\').click()"><span style="font-size:30px">📷</span><span style="font-weight:500">Fotografar agora</span><span style="font-size:12px;color:#9A8870">Abre a câmera</span></button>';
+    body+='<button class="btn btn-w" style="background:rgba(107,154,107,.1);border:1px solid rgba(107,154,107,.35);color:#EDE8DC;padding:14px 8px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:14px" onclick="document.getElementById(\'gf\').click()"><span style="font-size:30px">🖼️</span><span style="font-weight:500">Da galeria</span><span style="font-size:12px;color:#9A8870">Recomendado no iPhone</span></button>';
     body+='</div>';
     body+='<input id="cf" type="file" accept="image/*" capture="environment" style="display:none" onchange="app.readLabel(this)">';
     body+='<input id="gf" type="file" accept="image/*" style="display:none" onchange="app.readLabel(this)">';
-    body+='<div id="foto-status" style="text-align:center;font-size:12px;color:#9A8870">A leitura preenche os campos — você confere antes de salvar.<br>Bordeaux: safra fica na tira do gargalo.<br><span style="color:#9A8870">No app via Claude.ai pelo iPhone a leitura de foto pode falhar — use a aba "Do Claude" nesse caso.</span></div>';
+    body+='<div id="foto-status" style="text-align:center;font-size:14px;color:#9A8870">A leitura preenche os campos — você confere antes de salvar.<br>Bordeaux: safra fica na tira do gargalo.<br><span style="color:#9A8870">No app via Claude.ai pelo iPhone a leitura de foto pode falhar — use a aba "Do Claude" nesse caso.</span></div>';
     body+='</div>';
   } else if(!editing&&S.addTab==="claude"){
     body='<div style="display:flex;flex-direction:column;gap:14px">';
     body+='<div class="info-box"><div style="font-weight:500;color:#D4A547;margin-bottom:6px">Como usar:</div>';
     body+='1. Fotografe o rótulo com a câmera do iPhone<br>2. Nesta conversa, envie a foto e escreva <strong style="color:#C8821E">"rótulo"</strong><br>3. Copie o JSON que o Claude devolver<br>4. Cole abaixo e toque em Importar</div>';
     body+='<div><label class="lbl">Cole o JSON do Claude aqui</label>';
-    body+='<textarea id="jpaste" class="ta" style="font-family:monospace;font-size:11px" rows="5" placeholder=\'{"produtor":"...","safra":"2016",...}\' oninput="S.jsonPaste=this.value">'+esc(S.jsonPaste)+'</textarea></div>';
-    if(S.jsonErr)body+='<div style="color:#E09080;font-size:12px">'+esc(S.jsonErr)+'</div>';
+    body+='<textarea id="jpaste" class="ta" style="font-family:monospace;font-size:13px" rows="5" placeholder=\'{"produtor":"...","safra":"2016",...}\' oninput="S.jsonPaste=this.value">'+esc(S.jsonPaste)+'</textarea></div>';
+    if(S.jsonErr)body+='<div style="color:#E09080;font-size:14px">'+esc(S.jsonErr)+'</div>';
     body+='<button class="btn btn-p btn-w" onclick="app.importJson()">Importar e conferir →</button>';
     body+='</div>';
   } else {
     body='<div style="display:flex;flex-direction:column;gap:10px">';
-    if(S.addTab==="manual"&&!editing&&S.addWine&&S.addWine.produtor)body+='<div style="font-size:11px;color:#C8821E">✓ Dados lidos do rótulo — confira abaixo.</div>';
+    if(S.addTab==="manual"&&!editing&&S.addWine&&S.addWine.produtor)body+='<div style="font-size:13px;color:#C8821E">✓ Dados lidos do rótulo — confira abaixo.</div>';
     body+=wField("produtor","Produtor / Château","Château Pichon Baron",w.produtor,"","");
+    body+=wField("nome","Nome do vinho / Cuvée (opcional)","Cuvée Prestige",w.nome,"","");
     body+='<div style="display:flex;gap:8px">';
     body+=wField("safra","Safra","2016",w.safra,"","flex:0 0 calc(50% - 4px)");
     body+=wSel("tipo","Tipo",TIPOS,w.tipo,"flex:0 0 calc(50% - 4px)");
@@ -12913,7 +12918,7 @@ function buildTasteModal(){
   if(!w)return "";
   var t=S.taste||newProva();
   var ok=t.impressao&&t.impressao.trim().length>0;
-  var body='<div style="font-size:12px;color:#9A8870;margin-bottom:14px">'+esc(w.produtor)+" "+esc(w.safra)+'</div>';
+  var body='<div style="font-size:14px;color:#9A8870;margin-bottom:14px">'+esc(w.produtor)+(w.nome?" — "+esc(w.nome):"")+" "+esc(w.safra)+'</div>';
   body+='<div style="display:flex;flex-direction:column;gap:14px">';
   body+='<div><label class="lbl">Data</label><input type="date" class="inp" value="'+esc(t.data)+'" onchange="app.setTF(\'data\',this.value)"></div>';
   body+='<div><label class="lbl">Impressão</label><textarea class="ta" rows="4" placeholder="Aromas, sabor, taninos, final…" oninput="app.setTF(\'impressao\',this.value)">'+esc(t.impressao)+'</textarea></div>';
@@ -12922,7 +12927,7 @@ function buildTasteModal(){
     var lbl=m==="fechado"?"Fechado":m==="no_ponto"?"No ponto":"Passando";
     var clr=m==="no_ponto"?"#6B9A6B":m==="fechado"?"#7B6BAA":"#C0573F";
     var act=t.maturidade===m;
-    body+='<button style="flex:1;padding:8px 4px;border-radius:8px;font-size:12px;background:'+(act?clr+"22":"transparent")+';color:'+(act?clr:"#9A8870")+';border:.5px solid '+(act?clr:"rgba(212,165,71,.18)")+';font-weight:'+(act?500:400)+';cursor:pointer" data-mat="'+m+'" onclick="app.setTF(\'maturidade\',this.dataset.mat)">'+lbl+'</button>';
+    body+='<button style="flex:1;padding:8px 4px;border-radius:8px;font-size:14px;background:'+(act?clr+"22":"transparent")+';color:'+(act?clr:"#9A8870")+';border:.5px solid '+(act?clr:"rgba(212,165,71,.18)")+';font-weight:'+(act?500:400)+';cursor:pointer" data-mat="'+m+'" onclick="app.setTF(\'maturidade\',this.dataset.mat)">'+lbl+'</button>';
   });
   body+='</div></div>';
   body+='<div><label class="lbl">Contexto</label><input class="inp" value="'+esc(t.contexto)+'" placeholder="Onde, com quem, com qual prato…" oninput="app.setTF(\'contexto\',this.value)"></div>';
@@ -12950,7 +12955,7 @@ function buildDrinkChoice(){
   var w=D.wines.find(function(x){return x.id===S.drinkChoiceId;});
   if(!w)return "";
   var body='<div class="drink-choice-body">';
-  body+='<div style="font-size:12px;color:#9A8870;margin-bottom:4px">'+esc(w.produtor||"")+(w.safra?" · "+w.safra:"")+" · "+w.qtd+" garrafa"+(w.qtd!==1?"s":"")+'</div>';
+  body+='<div style="font-size:14px;color:#9A8870;margin-bottom:4px">'+esc(w.produtor||"")+(w.nome?" — "+esc(w.nome):"")+(w.safra?" · "+w.safra:"")+" · "+w.qtd+" garrafa"+(w.qtd!==1?"s":"")+'</div>';
   body+='<button class="dc-btn dc-btn-p" data-wid="'+esc(w.id)+'" onclick="app.openTaste(this.dataset.wid)">📝 Registrar prova e dar baixa<span class="dc-sub">Registra a impressão + decrementa 1 garrafa</span></button>';
   body+='<button class="dc-btn" data-wid="'+esc(w.id)+'" onclick="app.quickDeduct(this.dataset.wid)">− Só dar baixa<span class="dc-sub">Decrementa 1 garrafa sem registrar prova</span></button>';
   body+='</div>';
@@ -12960,10 +12965,10 @@ function buildDrinkChoice(){
 function buildHarmonizar(){
   var body="",foot="";
   if(S.harmLoading){
-    body='<div style="text-align:center;padding:32px 16px;color:#8ABA8A;font-size:14px">🍷 Consultando o sommelier…<br><span style="font-size:12px;color:#635646;margin-top:6px;display:block">Analisando '+D.wines.filter(function(w){return w.qtd>0;}).length+' vinhos disponíveis</span></div>';
+    body='<div style="text-align:center;padding:32px 16px;color:#8ABA8A;font-size:16px">🍷 Consultando o sommelier…<br><span style="font-size:14px;color:#635646;margin-top:6px;display:block">Analisando '+D.wines.filter(function(w){return w.qtd>0;}).length+' vinhos disponíveis</span></div>';
   } else if(S.harmResult&&S.harmResult.length>0){
-    body='<div style="margin-bottom:14px;font-size:11px;color:#9A8870">Prato: <span style="color:#C8821E">'+esc(S.harmPrato)+'</span>'+(S.harmOcasiao&&S.harmOcasiao!=="Não especificada"?" · "+esc(S.harmOcasiao):"")+'</div>';
-    if(S.harmError)body+='<div style="color:#E09080;font-size:12px;margin-bottom:8px">'+esc(S.harmError)+'</div>';
+    body='<div style="margin-bottom:14px;font-size:13px;color:#9A8870">Prato: <span style="color:#C8821E">'+esc(S.harmPrato)+'</span>'+(S.harmOcasiao&&S.harmOcasiao!=="Não especificada"?" · "+esc(S.harmOcasiao):"")+'</div>';
+    if(S.harmError)body+='<div style="color:#E09080;font-size:14px;margin-bottom:8px">'+esc(S.harmError)+'</div>';
     S.harmResult.forEach(function(r){
       var w=D.wines.find(function(x){return x.id===r.wineId;});if(!w)return;
       var mat=getMat(w),chart=chartInfo(w),c=TC[w.tipo]||TC.Tinto;
@@ -12972,12 +12977,12 @@ function buildHarmonizar(){
       body+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'+tipoPill(w.tipo);
       if(w.nicho)body+='<span class="nicho-tag">'+esc(w.nicho)+'</span>';
       body+='</div>';
-      body+='<div style="font-family:Georgia,serif;font-size:15px;color:#EDE8DC">'+esc(w.produtor||"Sem nome")+(w.safra?' <span style="color:#C8821E">'+esc(w.safra)+'</span>':"")+'</div>';
-      if(w.regiao)body+='<div style="font-size:11px;color:#9A8870;margin-top:2px">'+esc(w.regiao)+'</div>';
+      body+='<div style="font-family:Georgia,serif;font-size:17px;color:#EDE8DC">'+esc(w.produtor||"Sem nome")+(w.nome?' — '+esc(w.nome):"")+(w.safra?' <span style="color:#C8821E">'+esc(w.safra)+'</span>':"")+'</div>';
+      if(w.regiao)body+='<div style="font-size:13px;color:#9A8870;margin-top:2px">'+esc(w.regiao)+'</div>';
       body+='<div style="display:flex;align-items:center;gap:8px;margin-top:6px">';
-      if(mat)body+='<span style="display:flex;align-items:center;gap:4px"><span class="dot" style="background:'+mat.clr+'"></span><span style="font-size:10px;color:'+mat.clr+'">'+esc(mat.label)+'</span></span>';
+      if(mat)body+='<span style="display:flex;align-items:center;gap:4px"><span class="dot" style="background:'+mat.clr+'"></span><span style="font-size:12px;color:'+mat.clr+'">'+esc(mat.label)+'</span></span>';
       if(chart)body+='<span class="rat">WE '+chart.rating+'</span>';
-      body+='<span style="font-size:10px;color:#9A8870;margin-left:auto">'+w.qtd+' garrafa'+(w.qtd!==1?"s":"")+'</span>';
+      body+='<span style="font-size:12px;color:#9A8870;margin-left:auto">'+w.qtd+' garrafa'+(w.qtd!==1?"s":"")+'</span>';
       body+='</div></div>';
       body+='<div class="harm-nota">'+esc(r.nota)+'</div>';
       body+='</div>';
@@ -12985,7 +12990,7 @@ function buildHarmonizar(){
     body+='<button class="btn btn-w" style="margin-top:4px" onclick="app.resetHarm()">🔄 Nova busca</button>';
     foot='<button class="btn btn-w" onclick="app.closeModal()">Fechar</button>';
   } else {
-    if(S.harmError)body='<div style="background:rgba(192,87,63,.12);border:.5px solid rgba(192,87,63,.3);border-radius:8px;padding:10px 12px;color:#E09080;font-size:12px;margin-bottom:10px">'+esc(S.harmError)+'</div>';
+    if(S.harmError)body='<div style="background:rgba(192,87,63,.12);border:.5px solid rgba(192,87,63,.3);border-radius:8px;padding:10px 12px;color:#E09080;font-size:14px;margin-bottom:10px">'+esc(S.harmError)+'</div>';
     body+='<div style="display:flex;flex-direction:column;gap:14px">';
     body+='<div><label class="lbl">Qual prato vai servir?</label>';
     body+='<textarea id="harm-prato" class="ta" rows="2" placeholder="Ex: Cordeiro assado com alecrim, risoto de funghi, costeleta de vitela…" oninput="S.harmPrato=this.value">'+esc(S.harmPrato)+'</textarea></div>';
@@ -13296,7 +13301,7 @@ var app={
     S.harmLoading=true;S.harmError="";S.harmResult=[];render();
     var lista=avail.map(function(w,i){
       var mat=getMat(w);
-      return (i+1)+". "+[w.produtor,w.safra,w.tipo,w.regiao?w.regiao.split(",")[0]:"",mat?mat.label:"",w.qtd+"x"].filter(Boolean).join(" | ");
+      return (i+1)+". "+[w.produtor+(w.nome?" "+w.nome:""),w.safra,w.tipo,w.regiao?w.regiao.split(",")[0]:"",mat?mat.label:"",w.qtd+"x"].filter(Boolean).join(" | ");
     }).join("\n");
     var ocasiao=S.harmOcasiao&&S.harmOcasiao!=="Não especificada"?S.harmOcasiao:"não especificada";
     var prompt="Você é um sommelier. Sugira as 3 melhores opções da lista para harmonizar com o prato.\n\nPrato: "+prato+"\nOcasião: "+ocasiao+"\n\nVinhos (índice. produtor safra | tipo | região | maturidade | qtd):\n"+lista+"\n\nJSON sem markdown, até 3 objetos:\n[{\"indice\":1,\"nota\":\"2-3 frases explicando a harmonização.\"}]\n\nPrefira vinhos no ponto ou pode beber. Se não houver 3 boas opções, sugira menos.";
