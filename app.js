@@ -12314,7 +12314,7 @@ var MAT_PT={hold:"Guardar",early:"Pode beber",peak:"No ponto",late:"Pode ter pas
 var MAT_CLR={hold:"#7B6BAA",early:"#C8A030",peak:"#6B9A6B",late:"#C0573F",decline:"#888",nodata:"#555"};
 var TIPOS=["Tinto","Branco","Rosé","Espumante","Fortificado","Sobremesa"];
 var PROCS=[{id:"mala",l:"Mala"},{id:"importador",l:"Importador"},{id:"particular",l:"Particular"},{id:"presente",l:"Presente"},{id:"legado",l:"Legado"}];
-var MOEDAS=["EUR","USD","BRL"];
+var MOEDAS=["EUR","USD","BRL","CAD"];
 var TC={Tinto:{bg:"rgba(139,58,58,.28)",fg:"#E8A0A0"},Branco:{bg:"rgba(180,165,60,.2)",fg:"#C8C870"},Rosé:{bg:"rgba(190,107,116,.25)",fg:"#F0A0A8"},Espumante:{bg:"rgba(180,165,60,.2)",fg:"#E0D090"},Fortificado:{bg:"rgba(150,100,50,.25)",fg:"#D0A060"},Sobremesa:{bg:"rgba(150,100,50,.25)",fg:"#D0A060"}};
 var CHART_ANOS=[2024,2023,2022,2021,2020,2019,2018,2017,2016,2015,2014,2013,2012,2011,2010,2009,2008,2007,2006,2005,2004,2003,2002,2001,2000,1999,1998,1997];
 
@@ -13082,6 +13082,10 @@ function buildPrecos(){
   });
   var h='<div class="screen"><div class="ficha-hdr"><button style="background:none;border:none;color:#9A8870;font-size:24px" onclick="app.navigate(\'catalogo\')">←</button><span style="font-family:Georgia,serif;font-size:18px;color:#EDE8DC">Preencher preços</span></div>';
   h+='<div style="padding:12px 16px 6px;font-size:13px;color:#9A8870">Custo por garrafa, na moeda em que você comprou. Salva sozinho, sem precisar de botão.</div>';
+  h+='<div style="padding:0 16px 12px">';
+  h+='<button class="import-btn" onclick="document.getElementById(\'preco-file\').click()">⬆ Importar preços de planilha (CSV/Excel)</button>';
+  h+='<input id="preco-file" type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="app.importPrecos(this)">';
+  h+='</div>';
   h+='<div style="padding:4px 16px 24px">';
   if(wines.length===0){
     h+='<div class="empty"><div class="empty-icon">💰</div><div class="empty-ttl">Nenhum vinho cadastrado</div><div class="empty-sub">Adicione vinhos à adega primeiro.</div></div>';
@@ -13205,6 +13209,58 @@ var app={
   setPrecoMoeda:function(id,val){
     var w=D.wines.find(function(x){return x.id===id;});
     if(w){w.moeda=val;saveD();}
+  },
+  importPrecos:function(input){
+    var file=input&&input.files&&input.files[0];if(!file)return;
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      input.value="";
+      try{
+        var wb=XLSX.read(ev.target.result,{type:"array"});
+        var ws=wb.Sheets[wb.SheetNames[0]];
+        var data=XLSX.utils.sheet_to_json(ws,{header:1});
+        var headers=(data[0]||[]).map(function(h){return String(h||"").toLowerCase().trim();});
+        var ci={
+          prod:headers.findIndex(function(h){return h.includes("winery")||h.includes("château")||h.includes("chateau")||h.includes("produtor");}),
+          nome:headers.findIndex(function(h){return h.includes("wine name")||h.includes("nome do vinho");}),
+          safra:headers.findIndex(function(h){return h.includes("vintage")||h.includes("safra")||h.includes("year")||h.includes("ano");}),
+          preco:headers.findIndex(function(h){return h.includes("price")||h.includes("preço")||h.includes("prix");})
+        };
+        if(ci.prod<0||ci.preco<0){showToast("Não encontrei colunas de produtor/preço nessa planilha.");return;}
+        var preenchidos=0,jaTinha=0,ambiguos=0,semMatch=0;
+        data.slice(1).forEach(function(r){
+          if(!r||!r.some(function(c){return c;}))return;
+          var produtor=String(r[ci.prod]||"").trim();
+          var nome=ci.nome>=0?String(r[ci.nome]||"").trim():"";
+          var safra=ci.safra>=0?String(r[ci.safra]||"").replace(/[^0-9]/g,"").slice(0,4):"";
+          var precoRaw=String(r[ci.preco]||"").trim();
+          if(!produtor||!precoRaw)return;
+          var parts=precoRaw.split(/\s+/);
+          var moeda,custo;
+          if(parts.length>=2&&isNaN(parseFloat(parts[0]))){moeda=parts[0].toUpperCase();custo=parts.slice(1).join(" ");}
+          else{moeda=null;custo=precoRaw;}
+          var num=parseFloat(custo.replace(",","."));
+          if(isNaN(num))return;
+          custo=String(Math.round(num*100)/100);
+          var candidatos=D.wines.filter(function(w){
+            return (w.produtor||"").trim().toLowerCase()===produtor.toLowerCase()&&(w.safra||"")===safra;
+          });
+          if(candidatos.length===0){semMatch++;return;}
+          if(candidatos.length>1){ambiguos++;return;}
+          var w=candidatos[0];
+          if(w.custo){jaTinha++;return;}
+          w.custo=custo;
+          if(moeda&&MOEDAS.indexOf(moeda)>=0)w.moeda=moeda;
+          if(nome&&!w.nome&&nome.toLowerCase()!==produtor.toLowerCase())w.nome=nome;
+          preenchidos++;
+        });
+        saveD();
+        render();
+        showToast(preenchidos+" preços preenchidos"+(jaTinha?" · "+jaTinha+" já tinham preço":"")+(semMatch?" · "+semMatch+" sem vinho correspondente":"")+(ambiguos?" · "+ambiguos+" ambíguos":""),"ok");
+      }catch(e){showToast("Erro ao ler a planilha — confira o formato do arquivo.");}
+    };
+    reader.onerror=function(){showToast("Não foi possível ler o arquivo.");};
+    reader.readAsArrayBuffer(file);
   },
   printCatalogo:function(){
     var root=document.getElementById("print-root");
