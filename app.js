@@ -13029,9 +13029,10 @@ function buildToast(){
 function buildCatalogo(){
   var wines=D.wines.filter(function(w){return w.qtd>0;});
   var totalG=wines.reduce(function(s,w){return s+w.qtd;},0);
-  var h='<div class="screen"><div style="padding:20px 16px 8px">';
-  h+='<div style="font-family:Georgia,serif;font-size:30px;color:#EDE8DC;line-height:1">Catálogo</div>';
-  h+='<div style="font-size:13px;color:#9A8870;margin-top:4px">'+wines.length+' rótulo'+(wines.length!==1?"s":"")+' · '+totalG+' garrafa'+(totalG!==1?"s":"")+'</div>';
+  var h='<div class="screen"><div style="padding:20px 16px 8px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">';
+  h+='<div><div style="font-family:Georgia,serif;font-size:30px;color:#EDE8DC;line-height:1">Catálogo</div>';
+  h+='<div style="font-size:13px;color:#9A8870;margin-top:4px">'+wines.length+' rótulo'+(wines.length!==1?"s":"")+' · '+totalG+' garrafa'+(totalG!==1?"s":"")+'</div></div>';
+  if(wines.length>0)h+='<button class="print-btn" onclick="app.printCatalogo()">🖨️ Imprimir</button>';
   h+='</div><div style="padding:4px 16px 24px">';
   if(wines.length===0){
     h+='<div class="empty"><div class="empty-icon">📚</div><div class="empty-ttl">Nada para catalogar ainda</div><div class="empty-sub">Adicione vinhos à adega para ver o catálogo.</div></div>';
@@ -13064,6 +13065,54 @@ function buildCatalogo(){
     });
   }
   h+='</div></div>';
+  return h;
+}
+
+/* ── catálogo para impressão (país → tipo → região → produtor → vinho) ── */
+function buildPrintCatalogo(){
+  var wines=D.wines.filter(function(w){return w.qtd>0;});
+  var totalG=wines.reduce(function(s,w){return s+w.qtd;},0);
+  var tree={};
+  wines.forEach(function(w){
+    var pais=w.pais||"Sem país";
+    var tipo=w.tipo||"Sem tipo";
+    var regiao=w.regiao?w.regiao.split(",")[0].trim():"Sem região";
+    var produtor=w.produtor||"Sem produtor";
+    tree[pais]=tree[pais]||{};
+    tree[pais][tipo]=tree[pais][tipo]||{};
+    tree[pais][tipo][regiao]=tree[pais][tipo][regiao]||{};
+    tree[pais][tipo][regiao][produtor]=tree[pais][tipo][regiao][produtor]||[];
+    tree[pais][tipo][regiao][produtor].push(w);
+  });
+  var hoje=new Date().toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"});
+  var h='<div class="pc-cover"><div class="pc-cover-eyebrow">Cave Particular</div><div class="pc-cover-ttl">Catálogo da Adega</div>';
+  h+='<div class="pc-cover-sub">'+wines.length+' rótulo'+(wines.length!==1?"s":"")+' · '+totalG+' garrafa'+(totalG!==1?"s":"")+' · atualizado em '+hoje+'</div></div>';
+  Object.keys(tree).sort(function(a,b){return a.localeCompare(b);}).forEach(function(pais){
+    h+='<div class="pc-pais">'+esc(pais)+'</div>';
+    Object.keys(tree[pais]).sort(function(a,b){return a.localeCompare(b);}).forEach(function(tipo){
+      h+='<div class="pc-tipo">'+esc(tipo)+'</div>';
+      Object.keys(tree[pais][tipo]).sort(function(a,b){return a.localeCompare(b);}).forEach(function(regiao){
+        h+='<div class="pc-regiao">'+esc(regiao)+'</div>';
+        Object.keys(tree[pais][tipo][regiao]).sort(function(a,b){return a.localeCompare(b);}).forEach(function(produtor){
+          var list=tree[pais][tipo][regiao][produtor].slice().sort(function(a,b){
+            return (parseInt(b.safra||"0")||0)-(parseInt(a.safra||"0")||0);
+          });
+          h+='<div class="pc-produtor-block"><div class="pc-produtor">'+esc(produtor)+'</div>';
+          list.forEach(function(w){
+            var mat=getMat(w),chart=chartInfo(w);
+            var left="<b>"+(w.safra?esc(w.safra):"NV")+"</b>"+(w.nome?" "+esc(w.nome):"")+(w.uvas?" · "+esc(w.uvas):"");
+            var rightBits=[];
+            if(chart)rightBits.push("WE "+chart.rating);
+            if(mat)rightBits.push(mat.label);
+            if(w.custo)rightBits.push(w.moeda+" "+esc(w.custo));
+            rightBits.push(w.qtd+"x");
+            h+='<div class="pc-vinho"><span>'+left+'</span><span>'+esc(rightBits.join(" · "))+'</span></div>';
+          });
+          h+='</div>';
+        });
+      });
+    });
+  });
   return h;
 }
 
@@ -13112,6 +13161,10 @@ function refreshList(){
 /* ── app ─────────────────────────────────────────────────────── */
 var app={
   navigate:function(sc){S.screen=sc;S.wineId=null;render();},
+  printCatalogo:function(){
+    document.getElementById("print-root").innerHTML=buildPrintCatalogo();
+    window.print();
+  },
   back:function(){S.wineId=null;render();},
   openWine:function(id){S.wineId=id;render();},
   setQ:function(v){
