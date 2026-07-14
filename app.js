@@ -13032,7 +13032,12 @@ function buildCatalogo(){
   var h='<div class="screen"><div style="padding:20px 16px 8px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">';
   h+='<div><div style="font-family:Georgia,serif;font-size:30px;color:#EDE8DC;line-height:1">Catálogo</div>';
   h+='<div style="font-size:13px;color:#9A8870;margin-top:4px">'+wines.length+' rótulo'+(wines.length!==1?"s":"")+' · '+totalG+' garrafa'+(totalG!==1?"s":"")+'</div></div>';
-  if(wines.length>0)h+='<button class="print-btn" onclick="app.printCatalogo()">🖨️ Imprimir</button>';
+  if(wines.length>0){
+    h+='<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">';
+    h+='<button class="print-btn" onclick="app.navigate(\'precos\')">💰 Preços</button>';
+    h+='<button class="print-btn" onclick="app.printCatalogo()">🖨️ Imprimir</button>';
+    h+='</div>';
+  }
   h+='</div><div style="padding:4px 16px 24px">';
   if(wines.length===0){
     h+='<div class="empty"><div class="empty-icon">📚</div><div class="empty-ttl">Nada para catalogar ainda</div><div class="empty-sub">Adicione vinhos à adega para ver o catálogo.</div></div>';
@@ -13062,6 +13067,36 @@ function buildCatalogo(){
         if(w.custo)h+='<span style="color:#635646">·</span><span style="color:#D4A547;font-weight:600">'+w.moeda+' '+esc(w.custo)+'</span>';
         h+='</div></div>';
       });
+    });
+  }
+  h+='</div></div>';
+  return h;
+}
+
+/* ── preencher preços em lote ────────────────────────────────────── */
+function buildPrecos(){
+  var wines=D.wines.slice().sort(function(a,b){
+    var c=(a.produtor||"").localeCompare(b.produtor||"");
+    if(c!==0)return c;
+    return (parseInt(a.safra||"0")||0)-(parseInt(b.safra||"0")||0);
+  });
+  var h='<div class="screen"><div class="ficha-hdr"><button style="background:none;border:none;color:#9A8870;font-size:24px" onclick="app.navigate(\'catalogo\')">←</button><span style="font-family:Georgia,serif;font-size:18px;color:#EDE8DC">Preencher preços</span></div>';
+  h+='<div style="padding:12px 16px 6px;font-size:13px;color:#9A8870">Custo por garrafa, na moeda em que você comprou. Salva sozinho, sem precisar de botão.</div>';
+  h+='<div style="padding:4px 16px 24px">';
+  if(wines.length===0){
+    h+='<div class="empty"><div class="empty-icon">💰</div><div class="empty-ttl">Nenhum vinho cadastrado</div><div class="empty-sub">Adicione vinhos à adega primeiro.</div></div>';
+  } else {
+    wines.forEach(function(w){
+      h+='<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:.5px solid rgba(212,165,71,.15)">';
+      h+='<div style="flex:1;min-width:0">';
+      h+='<div style="font-family:Georgia,serif;font-size:14px;color:#EDE8DC;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(w.produtor||"Sem nome")+(w.nome?' — '+esc(w.nome):"")+(w.safra?' <span style="color:#C8821E">'+esc(w.safra)+'</span>':"")+'</div>';
+      if(w.regiao)h+='<div style="font-size:11px;color:#635646;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(w.regiao)+'</div>';
+      h+='</div>';
+      h+='<select class="sel" style="width:72px;flex-shrink:0;padding:8px 4px" data-wid="'+esc(w.id)+'" onchange="app.setPrecoMoeda(this.dataset.wid,this.value)">';
+      MOEDAS.forEach(function(m){h+='<option value="'+m+'"'+(w.moeda===m?" selected":"")+'>'+m+'</option>';});
+      h+='</select>';
+      h+='<input class="inp" style="width:64px;flex-shrink:0" inputmode="decimal" value="'+esc(w.custo||"")+'" placeholder="78" data-wid="'+esc(w.id)+'" oninput="app.setPrecoCusto(this.dataset.wid,this.value)">';
+      h+='</div>';
     });
   }
   h+='</div></div>';
@@ -13136,9 +13171,10 @@ function render(){
   else if(S.screen==="adega")screen=buildAdega();
   else if(S.screen==="diario")screen=buildDiario();
   else if(S.screen==="catalogo")screen=buildCatalogo();
+  else if(S.screen==="precos")screen=buildPrecos();
   else if(S.screen==="screener")screen=buildScreener();
   else screen=buildChart();
-  var nav=S.wineId?"":buildNav();
+  var nav=(S.wineId||S.screen==="precos")?"":buildNav();
   var modal="";
   if(S.drinkChoiceId)modal=buildDrinkChoice();
   else if(S.modal==="add"||S.modal==="edit")modal=buildAddModal();
@@ -13162,6 +13198,14 @@ function refreshList(){
 /* ── app ─────────────────────────────────────────────────────── */
 var app={
   navigate:function(sc){S.screen=sc;S.wineId=null;render();},
+  setPrecoCusto:function(id,val){
+    var w=D.wines.find(function(x){return x.id===id;});
+    if(w){w.custo=val;saveD();}
+  },
+  setPrecoMoeda:function(id,val){
+    var w=D.wines.find(function(x){return x.id===id;});
+    if(w){w.moeda=val;saveD();}
+  },
   printCatalogo:function(){
     var root=document.getElementById("print-root");
     root.innerHTML=buildPrintCatalogo();
