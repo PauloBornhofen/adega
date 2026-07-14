@@ -13163,8 +13163,17 @@ function refreshList(){
 var app={
   navigate:function(sc){S.screen=sc;S.wineId=null;render();},
   printCatalogo:function(){
-    document.getElementById("print-root").innerHTML=buildPrintCatalogo();
-    window.print();
+    var root=document.getElementById("print-root");
+    root.innerHTML=buildPrintCatalogo();
+    var imgs=Array.prototype.slice.call(root.querySelectorAll("img"));
+    var pending=imgs.length;
+    function go(){setTimeout(function(){window.print();},50);}
+    if(pending===0){go();return;}
+    imgs.forEach(function(img){
+      function done(){pending--;if(pending<=0)go();}
+      if(img.complete)done();
+      else{img.onload=done;img.onerror=done;}
+    });
   },
   back:function(){S.wineId=null;render();},
   openWine:function(id){S.wineId=id;render();},
